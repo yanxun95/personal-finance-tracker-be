@@ -1,0 +1,108 @@
+import prisma from "../config/database";
+import { hashPassword, comparePassword } from "../utils/password";
+import { generateToken } from "../utils/jwt";
+import { RegisterInput, LoginInput } from "../models/types";
+import { AppError } from "../utils/appError";
+
+export const registerUser = async (input: RegisterInput) => {
+  const { email, password } = input;
+  const name = (input.name || email.split("@")[0]) as string;
+  const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValidEmail = regexEmail.test(email);
+
+  if (!isValidEmail) {
+    throw AppError.badRequest("Invalid email");
+  }
+
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    throw AppError.conflict("User with this email already exists");
+  }
+
+  // Hash password
+  // TODO: The FE need to hash the password before sending it to the BE
+  const hashedPassword = await hashPassword(password);
+
+  // Create user
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      name: name,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+    },
+  });
+
+  // Generate token
+  const token = generateToken({
+    userId: user.id,
+    email: user.email,
+  });
+
+  return { user, token };
+};
+
+export const loginUser = async (input: LoginInput) => {
+  const { email, password } = input;
+
+  // Find user
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+  console.log("get the user in loginUser", user);
+
+  if (!user) {
+    throw AppError.unauthorized("Invalid email or password");
+  }
+
+  // Verify password
+  const isValidPassword = await comparePassword(password, user.password);
+
+  if (!isValidPassword) {
+    throw AppError.unauthorized("Invalid email or password");
+  }
+
+  // Generate token
+  const token = generateToken({
+    userId: user.id,
+    email: user.email,
+  });
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
+    },
+    token,
+  };
+};
+
+export const getUserById = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    throw AppError.notFound("User not found");
+  }
+
+  return user;
+};
+
