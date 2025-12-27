@@ -1,13 +1,13 @@
-import { Request, Response, NextFunction } from "express";
-import { AppError } from "../utils/appError";
+import { Request, Response, NextFunction } from 'express';
+import { AppError } from '../utils/appError';
 
 export const errorHandler = (
   err: Error,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
-  console.error("Error:", err);
+  console.error('Error:', err);
 
   // Handle custom AppError
   if (err instanceof AppError) {
@@ -20,11 +20,11 @@ export const errorHandler = (
   }
 
   // Handle Prisma errors
-  if (err.name === "PrismaClientKnownRequestError") {
+  if (err.name === 'PrismaClientKnownRequestError') {
     res.status(400).json({
       success: false,
-      message: "Database operation failed",
-      errorCode: "VALIDATION_ERROR",
+      message: 'Database operation failed',
+      errorCode: 'VALIDATION_ERROR',
     });
     return;
   }
@@ -32,8 +32,7 @@ export const errorHandler = (
   // Fallback for unknown errors
   res.status(500).json({
     success: false,
-    message: process.env.NODE_ENV === "development" ? err.message : "Internal server error",
-    errorCode: "INTERNAL_ERROR",
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+    errorCode: 'INTERNAL_ERROR',
   });
 };
-

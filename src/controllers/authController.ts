@@ -1,21 +1,14 @@
-import { Response } from "express";
-import { AuthRequest } from "../middleware/auth";
-import {
-  registerUser,
-  loginUser,
-  getUserById,
-} from "../services/authService";
-import { RegisterInput, LoginInput } from "../models/types";
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
+import { registerUser, loginUser, getUserById } from '../services/authService';
+import { RegisterInput, LoginInput } from '../models/types';
 
-export const register = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
+export const register = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const input: RegisterInput = req.body;
 
     if (!input.email || !input.password) {
-      res.status(400).json({ error: "Email and password are required" });
+      res.status(400).json({ error: 'Email and password are required' });
       return;
     }
 
@@ -26,15 +19,12 @@ export const register = async (
   }
 };
 
-export const login = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
+export const login = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const input: LoginInput = req.body;
 
     if (!input.email || !input.password) {
-      res.status(400).json({ error: "Email and password are required" });
+      res.status(400).json({ error: 'Email and password are required' });
       return;
     }
 
@@ -45,13 +35,10 @@ export const login = async (
   }
 };
 
-export const getMe = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
+export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
@@ -61,4 +48,3 @@ export const getMe = async (
     res.status(404).json({ error: error.message });
   }
 };
-

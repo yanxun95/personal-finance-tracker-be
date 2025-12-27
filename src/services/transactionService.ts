@@ -1,15 +1,11 @@
-import prisma from "../config/database";
-import {
-  CreateTransactionInput,
-  UpdateTransactionInput,
-} from "../models/types";
-import { AppError } from "../utils/appError";
+import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
+import { CreateTransactionInput, UpdateTransactionInput } from '../models/types';
+import { AppError } from '../utils/appError';
 
-export const createTransaction = async (
-  userId: string,
-  input: CreateTransactionInput
-) => {
-  // Verify category exists and is accessible to user
+const PAGE_SIZE = 20;
+
+export const createTransaction = async (userId: string, input: CreateTransactionInput) => {
   const category = await prisma.category.findFirst({
     where: {
       id: input.categoryId,
@@ -21,7 +17,7 @@ export const createTransaction = async (
   });
 
   if (!category) {
-    throw AppError.notFound("Category not found");
+    throw AppError.notFound('Category not found');
   }
 
   const transaction = await prisma.transaction.create({
@@ -33,47 +29,79 @@ export const createTransaction = async (
       description: input.description || null,
       date: new Date(input.date),
     },
-    include: {
-      category: true,
+    select: {
+      id: true,
+      type: true,
+      amount: true,
+      description: true,
+      date: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 
   return transaction;
 };
 
-export const getTransactions = async (userId: string) => {
-  const transactions = await prisma.transaction.findMany({
-    where: { userId },
-    include: {
-      category: true,
-    },
-    orderBy: {
-      date: "desc",
-    },
-  });
-
-  return transactions;
-};
-
-export const getTransactionById = async (
+export const getTransactions = async (
   userId: string,
-  transactionId: string
+  page: number,
+  startDate?: Date,
+  endDate?: Date
 ) => {
-  const transaction = await prisma.transaction.findFirst({
-    where: {
-      id: transactionId,
-      userId,
-    },
-    include: {
-      category: true,
-    },
-  });
+  const skip = (page - 1) * PAGE_SIZE;
 
-  if (!transaction) {
-    throw AppError.notFound("Transaction not found");
+  // Build dynamic where clause
+  const where: Prisma.TransactionWhereInput = { userId };
+
+  if (startDate && endDate) {
+    where.date = {
+      gte: startDate,
+      lte: endDate,
+    };
   }
 
-  return transaction;
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        description: true,
+        date: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          date: 'desc',
+        },
+        {
+          description: 'asc',
+        },
+      ],
+      skip,
+      take: PAGE_SIZE,
+    }),
+    prisma.transaction.count({
+      where,
+    }),
+  ]);
+
+  return {
+    data: transactions,
+    page,
+    total,
+  };
 };
 
 export const updateTransaction = async (
@@ -90,48 +118,55 @@ export const updateTransaction = async (
   });
 
   if (!existingTransaction) {
-    throw AppError.notFound("Transaction not found");
+    throw AppError.notFound('Transaction not found');
   }
 
   // If categoryId is being updated, verify it exists and is accessible to user
   if (input.categoryId) {
-      const category = await prisma.category.findFirst({
-        where: {
-          id: input.categoryId,
-          OR: [
-            { userId: null }, // Default categories
-            { userId }, // User-specific categories
-          ],
-        },
-      });
+    const category = await prisma.category.findFirst({
+      where: {
+        id: input.categoryId,
+        OR: [
+          { userId: null }, // Default categories
+          { userId }, // User-specific categories
+        ],
+      },
+    });
 
-      if (!category) {
-        throw AppError.notFound("Category not found");
-      }
+    if (!category) {
+      throw AppError.notFound('Category not found');
+    }
   }
 
-  const updateData: any = {};
+  const updateData: Partial<UpdateTransactionInput> = {};
   if (input.categoryId) updateData.categoryId = input.categoryId;
   if (input.type) updateData.type = input.type;
   if (input.amount !== undefined) updateData.amount = input.amount;
-  if (input.description !== undefined) updateData.description = input.description || null;
+  if (input.description !== undefined) updateData.description = input.description;
   if (input.date) updateData.date = new Date(input.date);
 
   const transaction = await prisma.transaction.update({
     where: { id: transactionId },
     data: updateData,
-    include: {
-      category: true,
+    select: {
+      id: true,
+      type: true,
+      amount: true,
+      description: true,
+      date: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 
   return transaction;
 };
 
-export const deleteTransaction = async (
-  userId: string,
-  transactionId: string
-) => {
+export const deleteTransaction = async (userId: string, transactionId: string) => {
   const transaction = await prisma.transaction.findFirst({
     where: {
       id: transactionId,
@@ -140,13 +175,12 @@ export const deleteTransaction = async (
   });
 
   if (!transaction) {
-    throw AppError.notFound("Transaction not found");
+    throw AppError.notFound('Transaction not found');
   }
 
   await prisma.transaction.delete({
     where: { id: transactionId },
   });
 
-  return { message: "Transaction deleted successfully" };
+  return { message: 'Transaction deleted successfully' };
 };
-

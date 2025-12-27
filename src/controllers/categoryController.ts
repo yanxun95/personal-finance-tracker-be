@@ -1,15 +1,12 @@
-import { Response } from "express";
-import { AuthRequest } from "../middleware/auth";
-import { getCategories, createCategory } from "../services/categoryService";
-import { CreateCategoryInput } from "../models/types";
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
+import { getCategories, createCategory, updateCategory } from '../services/categoryService';
+import { CategoryInput, UpdateCategoryInput } from '../models/types';
 
-export const getAll = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
+export const getAll = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
@@ -20,20 +17,16 @@ export const getAll = async (
   }
 };
 
-export const create = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
+export const create = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
+    const input: CategoryInput = req.body;
 
-    const input: CreateCategoryInput = req.body;
-
-    if (!input.name || input.name.trim() === "") {
-      res.status(400).json({ error: "Category name is required" });
+    if (!input.name || input.name.trim() === '') {
+      res.status(400).json({ error: 'Category name is required' });
       return;
     }
 
@@ -46,3 +39,22 @@ export const create = async (
   }
 };
 
+export const update = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const newCategory: UpdateCategoryInput = req.body;
+
+    if (!newCategory.id || !newCategory.name) {
+      res.status(400).json({ error: 'id and name are required' });
+      return;
+    }
+
+    const category = await updateCategory(req.user.userId, newCategory);
+    res.status(200).json(category);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};

@@ -88,3 +88,6 @@ Thumbs.db
 
 # Cursor IDE
 .cursor/
+
+# Todo files
+*.todo
