@@ -57,8 +57,6 @@ export const getAll = async (req: AuthRequest, res: Response): Promise<void> => 
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
-    console.log(req.query);
-
     const filter: TransactionFilterInput = {};
 
     // Parse page
